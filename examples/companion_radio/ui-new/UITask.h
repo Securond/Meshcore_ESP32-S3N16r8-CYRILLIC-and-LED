@@ -48,6 +48,20 @@ class UITask : public AbstractUITask {
   unsigned long _analogue_pin_read_millis = millis();
 #endif
 
+  // ====== RGB LED СОСТОЯНИЯ ======
+  bool m_isNetworkConnected = false;
+  uint32_t m_lastStatusColor = 0;
+  bool m_rgbLedEnabled = true;  // Включен ли RGB светодиод
+  
+  // Счетчики для разных типов сообщений
+  int m_unreadChannelMessages = 0;  // Непрочитанные сообщения в каналах
+  int m_unreadPrivateMessages = 0;  // Непрочитанные личные сообщения
+  
+  // Таймеры для мигания
+  unsigned long m_lastBlinkTime = 0;
+  bool m_isBlinking = false;
+  // ================================
+
   UIScreen* splash;
   UIScreen* home;
   UIScreen* msg_preview;
@@ -71,8 +85,6 @@ public:
     curr = NULL;
   }
   void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);
-
-  void gotoHomeScreen() { setCurrScreen(home); }
   void showAlert(const char* text, int duration_millis);
   int  getMsgCount() const { return _msgcount; }
   bool hasDisplay() const { return _display != NULL; }
@@ -90,12 +102,27 @@ public:
   bool getGPSState();
   void toggleGPS();
 
-
   // from AbstractUITask
   void msgRead(int msgcount) override;
   void newMsg(uint8_t path_len, const char* from_name, const char* text, int msgcount) override;
   void notify(UIEventType t = UIEventType::none) override;
   void loop() override;
 
+  void gotoHomeScreen() { 
+  // Если мы были на экране сообщений - сбрасываем счетчики
+    if (curr == msg_preview) {
+    markAllMessagesRead();
+    }
+    setCurrScreen(home); 
+  }
   void shutdown(bool restart = false);
+
+  // ====== RGB LED МЕТОДЫ ======
+  void onPrivateMessage(const char* from_name, const char* text);
+  void onChannelMessage(const char* from_name, const char* text);
+  void onMessageSent();
+  void markAllMessagesRead();
+  void markPrivateMessagesRead();
+  void markChannelMessagesRead();
+  // =============================
 };

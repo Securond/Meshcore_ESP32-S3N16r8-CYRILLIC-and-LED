@@ -1,6 +1,7 @@
 #include <Arduino.h>   // needed for PlatformIO
 #include <Mesh.h>
 #include "MyMesh.h"
+#include "rgb_led.h"
 
 // Believe it or not, this std C function is busted on some platforms!
 static uint32_t _atoi(const char* sp) {
@@ -112,8 +113,8 @@ void halt() {
 #endif
 
 void setup() {
+  initRGBLED();
   Serial.begin(115200);
-
   board.begin();
 
 #ifdef DISPLAY_CLASS

@@ -1,3 +1,37 @@
+
+---
+
+## 📝 Краткая версия (компактный README на русском)
+
+```markdown
+# MeshCore - ESP32-S3N16R8 с RGB светодиодом и бузером
+
+**Форк**: [meshcore-dev/MeshCore](https://github.com/meshcore-dev/MeshCore)
+
+## ✨ Что добавлено
+- ✅ Поддержка **ESP32-S3N16R8**
+- ✅ **RGB светодиод (WS2812)** для индикации на пине 48
+- ✅ **Бузер** для звуковых уведомлений
+- ✅ **Отключение обоих** тройным нажатием на пользовательскую кнопку
+
+## 🔴 Индикация RGB светодиода
+
+| Состояние | Цвет | Режим |
+|-----------|------|-------|
+| Загрузка | 🔵 Синий | Постоянно |
+| Сеть доступна | 🟢 Зеленый | Мигает каждую 1с |
+| Нет сети | 🔴 Красный | Постоянно |
+| Сообщения в каналах | 🟡 Желтый | Мигает каждую 1с |
+| Личные сообщения | 🔴 Красный | Мигает каждые 0.5с |
+
+## 🎮 Управление
+- **Тройное нажатие** → Вкл/Выкл бузер + RGB светодиод
+
+## 🚀 Прошивка
+```bash
+pio run -t upload
+
+
 ## About MeshCore
 
 MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.

@@ -2,6 +2,17 @@
 #include <helpers/TxtDataHelpers.h>
 #include "../MyMesh.h"
 #include "target.h"
+#include "rgb_led.h"
+
+// Определения цветов для RGB LED
+#define COLOR_RED    0xFF0000
+#define COLOR_GREEN  0x00FF00
+#define COLOR_BLUE   0x0000FF
+#define COLOR_YELLOW 0xFFFF00
+#define COLOR_CYAN   0x00FFFF
+#define COLOR_PURPLE 0xFF00FF
+#define COLOR_BLACK  0x000000
+
 #ifdef WIFI_SSID
   #include <WiFi.h>
 #endif
@@ -58,7 +69,7 @@ public:
     display.drawXbm((display.width() - logoWidth) / 2, 3, meshcore_logo, logoWidth, 13);
 
     // meshcore website
-    const char* website = "https://meshcore.io";
+    const char* website = "@ProsoMaksks";
     display.setColor(DisplayDriver::LIGHT);
     display.setTextSize(1);
     uint16_t websiteWidth = display.getTextWidth(website);
@@ -71,7 +82,13 @@ public:
     display.drawTextCentered(display.width()/2, 35, _version_info);
 
     display.setTextSize(1);
+#ifdef CYRILLIC
+    char filtered_date[sizeof(FIRMWARE_BUILD_DATE)];
+    display.translateUTF8ToBlocks(filtered_date, FIRMWARE_BUILD_DATE, sizeof(filtered_date));
+    display.drawTextCentered(display.width()/2, 48, filtered_date);
+#else
     display.drawTextCentered(display.width()/2, 48, FIRMWARE_BUILD_DATE);
+#endif
 
     return 1000;
   }
@@ -154,7 +171,7 @@ class HomeScreen : public UIScreen {
   bool sensors_scroll = false;
   int sensors_scroll_offset = 0;
   int next_sensors_refresh = 0;
-
+  
   void refresh_sensors() {
     if (millis() > next_sensors_refresh) {
       sensors_lpp.reset();
@@ -178,7 +195,7 @@ class HomeScreen : public UIScreen {
 
 public:
   HomeScreen(UITask* task, mesh::RTCClock* rtc, SensorManager* sensors, NodePrefs* node_prefs)
-     : _task(task), _rtc(rtc), _sensors(sensors), _node_prefs(node_prefs), _page(0),
+     : _task(task), _rtc(rtc), _sensors(sensors), _node_prefs(node_prefs), _page(0), 
        _shutdown_init(false), sensors_lpp(200) {  }
 
   void poll() override {
@@ -214,14 +231,14 @@ public:
     if (_page == HomePage::FIRST) {
       display.setColor(DisplayDriver::YELLOW);
       display.setTextSize(2);
-      sprintf(tmp, "MSG: %d", _task->getMsgCount());
+      sprintf(tmp, "SMS: %d", _task->getMsgCount());
       display.drawTextCentered(display.width() / 2, 20, tmp);
 
       #ifdef WIFI_SSID
         IPAddress ip = WiFi.localIP();
         snprintf(tmp, sizeof(tmp), "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
         display.setTextSize(1);
-        display.drawTextCentered(display.width() / 2, 54, tmp);
+        display.drawTextCentered(display.width() / 2, 54, tmp); 
       #endif
       if (_task->hasConnection()) {
         display.setColor(DisplayDriver::GREEN);
@@ -249,10 +266,10 @@ public:
         } else {
           sprintf(tmp, "%dh", secs / (60*60));
         }
-
+        
         int timestamp_width = display.getTextWidth(tmp);
         int max_name_width = display.width() - timestamp_width - 1;
-
+        
         char filtered_recent_name[sizeof(a->name)];
         display.translateUTF8ToBlocks(filtered_recent_name, a->name, sizeof(filtered_recent_name));
         display.drawTextEllipsized(0, y, max_name_width, filtered_recent_name);
@@ -318,7 +335,7 @@ public:
         display.drawTextRightAlign(display.width()-1, y, buf);
         y = y + 12;
         display.drawTextLeftAlign(0, y, "pos");
-        sprintf(buf, "%.4f %.4f",
+        sprintf(buf, "%.4f %.4f", 
           nmea->getLatitude()/1000000., nmea->getLongitude()/1000000.);
         display.drawTextRightAlign(display.width()-1, y, buf);
         y = y + 12;
@@ -404,10 +421,10 @@ public:
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
       if (_shutdown_init) {
-        display.drawTextCentered(display.width() / 2, 34, "hibernating...");
+        display.drawTextCentered(display.width() / 2, 34, "BbIKL...");
       } else {
         display.drawXbm((display.width() - 32) / 2, 18, power_icon, 32, 32);
-        display.drawTextCentered(display.width() / 2, 64 - 11, "hibernate:" PRESS_LABEL);
+        display.drawTextCentered(display.width() / 2, 64 - 11, "BbIKL:" PRESS_LABEL);
       }
     }
     return 5000;   // next render after 5000 ms
@@ -470,7 +487,11 @@ class MsgPreviewScreen : public UIScreen {
   struct MsgEntry {
     uint32_t timestamp;
     char origin[62];
+#ifdef CYRILLIC
+    char msg[140];
+#else
     char msg[78];
+#endif
   };
   #define MAX_UNREAD_MSGS   32
   int num_unread;
@@ -527,7 +548,13 @@ public:
     display.setColor(DisplayDriver::LIGHT);
     char filtered_msg[sizeof(p->msg)];
     display.translateUTF8ToBlocks(filtered_msg, p->msg, sizeof(filtered_msg));
+#ifdef CYRILLIC
+    char truncated_msg[78];
+    StrHelper::strncpy(truncated_msg, filtered_msg, sizeof(truncated_msg));
+    display.printWordWrap(truncated_msg, display.width());
+#else
     display.printWordWrap(filtered_msg, display.width());
+#endif
 
 #if AUTO_OFF_MILLIS==0 // probably e-ink
     return 10000; // 10 s
@@ -575,7 +602,6 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 #ifdef PIN_BUZZER
   buzzer.begin();
   buzzer.quiet(_node_prefs->buzzer_quiet);
-  buzzer.startup();
 #endif
 
 #ifdef PIN_VIBRATION
@@ -584,6 +610,12 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 
   ui_started_at = millis();
   _alert_expiry = 0;
+
+  // ====== ИНИЦИАЛИЗАЦИЯ RGB LED ======
+  initRGBLED();                    // Инициализация светодиода
+  m_lastStatusColor = COLOR_BLUE;  // Запоминаем текущий цвет
+  setStatusColor(COLOR_BLUE);      // Синий - устройство загружается
+  // ==================================
 
   splash = new SplashScreen(this);
   home = new HomeScreen(this, &rtc_clock, sensors, node_prefs);
@@ -601,9 +633,10 @@ void UITask::notify(UIEventType t) {
 switch(t){
   case UIEventType::contactMessage:
     // gemini's pick
-    buzzer.play("MsgRcv3:d=4,o=6,b=200:32e,32g,32b,16c7");
+    buzzer.play("elochka:d=4,o=5,b=120:4c,4a,4a,4g,4a,4f,4c,4c");
     break;
   case UIEventType::channelMessage:
+   // buzzer.play("happy:d=8,o=6,b=200:8c,8e,8g,4c7,8p,8g,8e,4c");
     buzzer.play("kerplop:d=16,o=6,b=120:32g#,32c#");
     break;
   case UIEventType::ack:
@@ -623,8 +656,49 @@ switch(t){
     vibration.trigger();
   }
 #endif
-}
 
+  // ====== RGB LED ЭФФЕКТЫ ======
+  switch(t) {
+    case UIEventType::contactMessage:
+      // Личное сообщение
+      m_unreadPrivateMessages++;
+      setLEDColor(COLOR_RED);
+      delay(300);
+      m_lastStatusColor = COLOR_RED;
+      m_isBlinking = false;
+      m_lastBlinkTime = 0;
+      break;
+      
+    case UIEventType::channelMessage:
+      // Канальное сообщение
+      m_unreadChannelMessages++;
+      setLEDColor(COLOR_BLUE);
+      delay(200);
+      m_lastStatusColor = COLOR_BLUE;
+      m_isBlinking = false;
+      m_lastBlinkTime = 0;
+      break;
+      
+    case UIEventType::roomMessage:
+      // Сообщение в комнате
+      m_unreadChannelMessages++;
+      setLEDColor(COLOR_BLUE);
+      delay(200);
+      m_lastStatusColor = COLOR_BLUE;
+      m_isBlinking = false;
+      m_lastBlinkTime = 0;
+      break;
+      
+    case UIEventType::ack:
+      // Подтверждение отправки
+      setLEDColor(COLOR_CYAN);
+      delay(100);
+      break;
+      
+    default:
+      break;
+  }
+}
 
 void UITask::msgRead(int msgcount) {
   _msgcount = msgcount;
@@ -635,6 +709,25 @@ void UITask::msgRead(int msgcount) {
 
 void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, int msgcount) {
   _msgcount = msgcount;
+  
+  // Определяем тип сообщения
+  // Если path_len == 0xFF - личное сообщение, иначе канальное
+  bool isPrivate = (path_len == 0xFF);
+  
+  if (isPrivate) {
+    m_unreadPrivateMessages++;
+    setLEDColor(COLOR_RED);
+    delay(300);
+  } else {
+    m_unreadChannelMessages++;
+    setLEDColor(COLOR_BLUE);
+    delay(200);
+  }
+  
+  // Сохраняем состояние для userLedHandler()
+  m_lastStatusColor = isPrivate ? COLOR_RED : COLOR_BLUE;
+  m_isBlinking = false;
+  m_lastBlinkTime = 0;
 
   ((MsgPreviewScreen *) msg_preview)->addPreview(path_len, from_name, text);
   setCurrScreen(msg_preview);
@@ -644,14 +737,15 @@ void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, i
       _display->turnOn();
     }
     if (_display->isOn()) {
-    _auto_off = millis() + AUTO_OFF_MILLIS;  // extend the auto-off timer
-    _next_refresh = 100;  // trigger refresh
+      _auto_off = millis() + AUTO_OFF_MILLIS;
+      _next_refresh = 100;
     }
   }
 }
 
 void UITask::userLedHandler() {
 #ifdef PIN_STATUS_LED
+  // Обычный светодиод (если есть)
   int cur_time = millis();
   if (cur_time > next_led_change) {
     if (led_state == 0) {
@@ -669,6 +763,77 @@ void UITask::userLedHandler() {
     digitalWrite(PIN_STATUS_LED, led_state == LED_STATE_ON);
   }
 #endif
+  // ====== ПРОВЕРКА: ВКЛЮЧЕН ЛИ RGB LED ======
+  if (!m_rgbLedEnabled) {
+    // Убеждаемся, что светодиод выключен
+    if (m_lastStatusColor != COLOR_BLACK) {
+      setLEDColor(COLOR_BLACK);
+      m_lastStatusColor = COLOR_BLACK;
+      m_isBlinking = false;
+    }
+    return; // Выходим, не выполняя остальную логику
+  }
+
+  // ====== RGB LED ЛОГИКА ======
+  unsigned long currentTime = millis();
+  static unsigned long lastToggleTime = 0;
+  static bool ledOn = true;
+  
+  // Время мигания в миллисекундах (можно менять)
+  const unsigned long BLINK_INTERVAL = 1000; // 1 секунда
+  const unsigned long BLINK_INTERVAL_P = 500; // 0.5 секунды
+  // 1. Приоритет 1: Непрочитанные личные сообщения - мигают красным
+  if (m_unreadPrivateMessages > 0) {
+    if (currentTime - lastToggleTime >= BLINK_INTERVAL_P) {
+      lastToggleTime = currentTime;
+      ledOn = !ledOn;
+      setLEDColor(ledOn ? COLOR_RED : COLOR_BLACK);
+      m_lastStatusColor = ledOn ? COLOR_RED : COLOR_BLACK;
+    }
+    return;
+  }
+  
+  // 2. Приоритет 2: Непрочитанные сообщения в каналах - мигают желтым
+  if (m_unreadChannelMessages > 0) {
+    if (currentTime - lastToggleTime >= BLINK_INTERVAL) {
+      lastToggleTime = currentTime;
+      ledOn = !ledOn;
+      setLEDColor(ledOn ? COLOR_YELLOW : COLOR_BLACK);
+      m_lastStatusColor = ledOn ? COLOR_YELLOW : COLOR_BLACK;
+    }
+    return;
+  }
+  
+  // 3. Приоритет 3: Основной статус сети - мигает зеленым
+  bool connected = the_mesh.getNumContacts() > 0;
+  
+  if (connected != m_isNetworkConnected) {
+    m_isNetworkConnected = connected;
+    lastToggleTime = 0;
+    ledOn = true;
+    // При смене статуса сразу включаем нужный цвет
+    setLEDColor(connected ? COLOR_GREEN : COLOR_RED);
+    m_lastStatusColor = connected ? COLOR_GREEN : COLOR_RED;
+    return;
+  }
+  
+  if (m_isNetworkConnected) {
+    // Зеленый мигает раз в BLINK_INTERVAL
+    if (currentTime - lastToggleTime >= BLINK_INTERVAL) {
+      lastToggleTime = currentTime;
+      ledOn = !ledOn;
+      setLEDColor(ledOn ? COLOR_GREEN : COLOR_BLACK);
+      m_lastStatusColor = ledOn ? COLOR_GREEN : COLOR_BLACK;
+    }
+  } else {
+    // Нет сети - красный постоянно (не мигает)
+    if (m_lastStatusColor != COLOR_RED) {
+      setLEDColor(COLOR_RED);
+      m_lastStatusColor = COLOR_RED;
+      ledOn = true;
+      lastToggleTime = 0;
+    }
+  }
 }
 
 void UITask::setCurrScreen(UIScreen* c) {
@@ -750,7 +915,7 @@ void UITask::loop() {
 #endif
 #if defined(PIN_USER_BTN_ANA)
   if (abs(millis() - _analogue_pin_read_millis) > 10) {
-    int ev = analog_btn.check();
+    ev = analog_btn.check();
     if (ev == BUTTON_EVENT_CLICK) {
       c = checkDisplayOn(KEY_NEXT);
     } else if (ev == BUTTON_EVENT_LONG_PRESS) {
@@ -809,15 +974,6 @@ void UITask::loop() {
       _display->endFrame();
     }
 #if AUTO_OFF_MILLIS > 0
-#ifdef KEEP_DISPLAY_ON_USB
-    // Opt-in: refresh the auto-off deadline while externally powered, so the
-    // timer counts from the moment external power is removed. Off by default
-    // because OLED panels burn in quickly; only enable for LCD targets or
-    // where the display is replaceable.
-    if (board.isExternalPowered()) {
-      _auto_off = millis() + AUTO_OFF_MILLIS;
-    }
-#endif
     if (millis() > _auto_off) {
       _display->turnOff();
     }
@@ -832,18 +988,22 @@ void UITask::loop() {
   if (millis() > next_batt_chck) {
     uint16_t milliVolts = getBattMilliVolts();
     if (milliVolts > 0 && milliVolts < AUTO_SHUTDOWN_MILLIVOLTS) {
-      if(!board.isExternalPowered()) {
-        if (_display != NULL) {
-          _display->startFrame();
-          _display->setTextSize(2);
-          _display->setColor(DisplayDriver::RED);
-          _display->drawTextCentered(_display->width() / 2, 20, "Low Battery.");
-          _display->drawTextCentered(_display->width() / 2, 40, "Shutting Down!");
-          _display->endFrame();
-          if (_display->isEink() == false) { delay(3000); }
-        }
-        shutdown();
+
+      // show low battery shutdown alert
+      // we should only do this for eink displays, which will persist after power loss
+      #if defined(THINKNODE_M1) || defined(LILYGO_TECHO)
+      if (_display != NULL) {
+        _display->startFrame();
+        _display->setTextSize(2);
+        _display->setColor(DisplayDriver::RED);
+        _display->drawTextCentered(_display->width() / 2, 20, "Low Battery.");
+        _display->drawTextCentered(_display->width() / 2, 40, "Shutting Down!");
+        _display->endFrame();
       }
+      #endif
+
+      shutdown();
+
     }
     next_batt_chck = millis() + 8000;
   }
@@ -871,7 +1031,7 @@ char UITask::handleLongPress(char c) {
 }
 
 char UITask::handleDoubleClick(char c) {
-  MESH_DEBUG_PRINTLN("UITask: double-click triggered");
+  MESH_DEBUG_PRINTLN("UITask: double click triggered");
   checkDisplayOn(c);
   return c;
 }
@@ -892,7 +1052,7 @@ bool UITask::getGPSState() {
         return !strcmp(_sensors->getSettingValue(i), "1");
       }
     }
-  }
+  } 
   return false;
 }
 
@@ -921,17 +1081,107 @@ void UITask::toggleGPS() {
 }
 
 void UITask::toggleBuzzer() {
-    // Toggle buzzer quiet mode
+  // Toggle buzzer quiet mode
   #ifdef PIN_BUZZER
     if (buzzer.isQuiet()) {
       buzzer.quiet(false);
-      notify(UIEventType::ack);
     } else {
       buzzer.quiet(true);
     }
     _node_prefs->buzzer_quiet = buzzer.isQuiet();
     the_mesh.savePrefs();
-    showAlert(buzzer.isQuiet() ? "Buzzer: OFF" : "Buzzer: ON", 800);
-    _next_refresh = 0;  // trigger refresh
   #endif
+
+  // ====== СИНХРОННОЕ ОТКЛЮЧЕНИЕ RGB LED ======
+  m_rgbLedEnabled = !m_rgbLedEnabled;
+  
+  if (!m_rgbLedEnabled) {
+    // Выключаем светодиод
+    setLEDColor(COLOR_BLACK);
+    m_lastStatusColor = COLOR_BLACK;
+    m_isBlinking = false;
+    m_lastBlinkTime = 0;
+  } else {
+    // Восстанавливаем состояние (обновится в userLedHandler)
+    m_lastBlinkTime = 0;
+    m_isBlinking = false;
+    // Принудительно обновляем статус при следующем вызове userLedHandler
+    m_isNetworkConnected = !m_isNetworkConnected; // Триггер для обновления
+  }
+  // ==========================================
+
+  // Показываем уведомление
+  #ifdef PIN_BUZZER
+    showAlert(buzzer.isQuiet() ? "Buzzer & RGB: OFF" : "Buzzer & RGB: ON", 800);
+  #else
+    showAlert(m_rgbLedEnabled ? "RGB: ON" : "RGB: OFF", 800);
+  #endif
+  _next_refresh = 0;
+}
+
+// ====== RGB LED МЕТОДЫ ======
+
+// При получении личного сообщения
+void UITask::onPrivateMessage(const char* from_name, const char* text) {
+  // Увеличиваем счетчик непрочитанных личных сообщений
+  m_unreadPrivateMessages++;
+  
+  // Красная вспышка при получении
+  setLEDColor(COLOR_RED);
+  delay(300);
+  
+  // Сохраняем состояние для userLedHandler()
+  m_lastStatusColor = COLOR_RED;
+  m_isBlinking = false;
+  m_lastBlinkTime = 0;
+}
+
+// При получении сообщения в канале
+void UITask::onChannelMessage(const char* from_name, const char* text) {
+  // Увеличиваем счетчик непрочитанных канальных сообщений
+  m_unreadChannelMessages++;
+  
+  // Синяя вспышка при получении
+  setLEDColor(COLOR_BLUE);
+  delay(200);
+  
+  // Сохраняем состояние для userLedHandler()
+  m_lastStatusColor = COLOR_BLUE;
+  m_isBlinking = false;
+  m_lastBlinkTime = 0;
+}
+
+// При отправке сообщения (ACK)
+void UITask::onMessageSent() {
+  // Голубая вспышка
+  setLEDColor(COLOR_CYAN);
+  delay(100);
+}
+
+// Сброс всех счетчиков непрочитанных сообщений
+void UITask::markAllMessagesRead() {
+  m_unreadPrivateMessages = 0;
+  m_unreadChannelMessages = 0;
+  m_lastBlinkTime = 0;
+  m_isBlinking = false;
+}
+
+// Сброс только личных сообщений
+void UITask::markPrivateMessagesRead() {
+  m_unreadPrivateMessages = 0;
+  if (m_unreadChannelMessages == 0) {
+    // Если нет и канальных, сбрасываем таймер
+    m_lastBlinkTime = 0;
+    m_isBlinking = false;
+  }
+}
+
+// Сброс только канальных сообщений
+void UITask::markChannelMessagesRead() {
+  m_unreadChannelMessages = 0;
+  if (m_unreadPrivateMessages == 0) {
+    // Если нет и личных, сбрасываем таймер
+    m_lastBlinkTime = 0;
+    m_isBlinking = false;
+  }
 }
