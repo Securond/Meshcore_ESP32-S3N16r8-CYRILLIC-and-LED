@@ -7,7 +7,8 @@
 #include <helpers/BaseSerialInterface.h>
 #include <Arduino.h>
 #include <helpers/sensors/LPPDataHelpers.h>
-
+#define UI_SENSORS_PAGE 1
+#define ENV_INCLUDE_GPS 0
 #ifndef LED_STATE_ON
   #define LED_STATE_ON 1
 #endif

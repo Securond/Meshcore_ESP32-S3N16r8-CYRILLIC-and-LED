@@ -52,6 +52,14 @@ static Adafruit_BME680 BME680(TELEM_WIRE);
 static Adafruit_BMP085 BMP085;
 #endif
 
+#if ENV_INCLUDE_SHT4X
+#ifndef TELEM_SHT4X_ADDRESS
+#define TELEM_SHT4X_ADDRESS 0x44
+#endif
+#include <SensirionI2cSht4x.h>
+static SensirionI2cSht4x SHT4X;
+#endif
+
 #if ENV_INCLUDE_AHTX0
 #ifndef TELEM_AHTX_ADDRESS
 #define TELEM_AHTX_ADDRESS      0x38      // AHT10, AHT20 temperature and humidity sensor I2C address
@@ -81,14 +89,6 @@ static Adafruit_BMP280 BMP280(TELEM_WIRE);
 #if ENV_INCLUDE_SHTC3
 #include <Adafruit_SHTC3.h>
 static Adafruit_SHTC3 SHTC3;
-#endif
-
-#if ENV_INCLUDE_SHT4X
-#ifndef TELEM_SHT4X_ADDRESS
-#define TELEM_SHT4X_ADDRESS 0x44
-#endif
-#include <SensirionI2cSht4x.h>
-static SensirionI2cSht4x SHT4X;
 #endif
 
 #if ENV_INCLUDE_LPS22HB
@@ -128,7 +128,7 @@ static Adafruit_INA260 INA260;
 
 #if ENV_INCLUDE_INA226
 #ifndef TELEM_INA226_ADDRESS
-#define TELEM_INA226_ADDRESS     0x44
+#define TELEM_INA226_ADDRESS     0x46
 #endif
 #define TELEM_INA226_SHUNT_VALUE 0.100
 #define TELEM_INA226_MAX_AMP     0.8
@@ -330,6 +330,7 @@ static void query_sht4x(uint8_t ch, uint8_t, CayenneLPP& lpp) {
   }
 }
 #endif
+
 
 #if ENV_INCLUDE_LPS22HB
 static uint8_t init_lps22hb(TwoWire*, uint8_t) {

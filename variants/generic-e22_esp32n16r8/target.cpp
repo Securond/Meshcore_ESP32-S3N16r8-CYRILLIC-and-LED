@@ -9,16 +9,23 @@ ESP32Board board;
 #else
   RADIO_CLASS radio = new Module(P_LORA_NSS, P_LORA_DIO_1, P_LORA_RESET, P_LORA_BUSY);
 #endif
-
 WRAPPER_CLASS radio_driver(radio, board);
+
+#ifdef ENV_INCLUDE_GPS
+#include <helpers/sensors/MicroNMEALocationProvider.h>
+#endif
 
 ESP32RTCClock fallback_clock;
 AutoDiscoverRTCClock rtc_clock(fallback_clock);
-SensorManager sensors;
+MicroNMEALocationProvider locationProvider(Serial1, &rtc_clock);
+EnvironmentSensorManager sensors(locationProvider);
+
+
 #ifdef DISPLAY_CLASS
   DISPLAY_CLASS display(NULL);
   MomentaryButton user_btn(PIN_USER_BTN, 1000, true);
 #endif
+
 bool radio_init() {
   fallback_clock.begin();
   rtc_clock.begin(Wire);

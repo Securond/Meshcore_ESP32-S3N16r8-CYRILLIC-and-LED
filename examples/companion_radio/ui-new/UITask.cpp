@@ -18,9 +18,9 @@
 #endif
 
 #ifndef AUTO_OFF_MILLIS
-  #define AUTO_OFF_MILLIS     15000   // 15 seconds
+  #define AUTO_OFF_MILLIS     25000   // 15 seconds
 #endif
-#define BOOT_SCREEN_MILLIS   3000   // 3 seconds
+#define BOOT_SCREEN_MILLIS   5000   // 3 seconds
 
 #ifdef PIN_STATUS_LED
 #define LED_ON_MILLIS     20
@@ -65,8 +65,8 @@ public:
   int render(DisplayDriver& display) override {
     // meshcore logo
     display.setColor(DisplayDriver::BLUE);
-    int logoWidth = 128;
-    display.drawXbm((display.width() - logoWidth) / 2, 3, meshcore_logo, logoWidth, 13);
+    display.setTextSize(2);  // Увеличенный шрифт
+    display.drawTextCentered(display.width()/2, 1, "SecurB");
 
     // meshcore website
     const char* website = "@ProsoMaksks";
@@ -228,29 +228,55 @@ public:
       }
     }
 
-    if (_page == HomePage::FIRST) {
-      display.setColor(DisplayDriver::YELLOW);
-      display.setTextSize(2);
-      sprintf(tmp, "SMS: %d", _task->getMsgCount());
-      display.drawTextCentered(display.width() / 2, 20, tmp);
-
-      #ifdef WIFI_SSID
-        IPAddress ip = WiFi.localIP();
-        snprintf(tmp, sizeof(tmp), "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-        display.setTextSize(1);
-        display.drawTextCentered(display.width() / 2, 54, tmp); 
-      #endif
-      if (_task->hasConnection()) {
-        display.setColor(DisplayDriver::GREEN);
-        display.setTextSize(1);
-        display.drawTextCentered(display.width() / 2, 43, "< Connected >");
-
-      } else if (the_mesh.getBLEPin() != 0) { // BT pin
-        display.setColor(DisplayDriver::RED);
-        display.setTextSize(2);
-        sprintf(tmp, "Pin:%d", the_mesh.getBLEPin());
-        display.drawTextCentered(display.width() / 2, 43, tmp);
-      }
+if (_page == HomePage::FIRST) {
+  display.setTextSize(1);
+  int y = 16;
+  
+  // 1. Сообщения
+  display.setColor(DisplayDriver::GREEN);
+  sprintf(tmp, "Messages: %d", _task->getMsgCount());
+  display.drawTextCentered(display.width() / 2, y, tmp);
+  y += 12;
+  
+  // 2. WiFi или BLE (все GREEN)
+  display.setColor(DisplayDriver::GREEN);
+  #ifdef WIFI_SSID
+    if (WiFi.status() == WL_CONNECTED) {
+      IPAddress ip = WiFi.localIP();
+      sprintf(tmp, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+    } else {
+      sprintf(tmp, "WiFi: %s", 
+        WiFi.status() == WL_DISCONNECTED ? "Disconnected" : "Connecting...");
+    }
+  #else
+    int blePin = the_mesh.getBLEPin();
+    sprintf(tmp, "BLE PIN: %d", blePin > 0 ? blePin : 0);
+  #endif
+  display.drawTextCentered(display.width() / 2, y, tmp);
+  y += 12;
+  
+  // 3. RF
+  display.setColor(DisplayDriver::GREEN);
+  sprintf(tmp, "RF: %06.3fMHz SF%d", _node_prefs->freq, _node_prefs->sf);
+  display.drawTextCentered(display.width() / 2, y, tmp);
+  y += 12;
+  
+  // 4. Uptime (тоже GREEN)
+  display.setColor(DisplayDriver::GREEN);
+  unsigned long uptimeSeconds = millis() / 1000;
+  int days = uptimeSeconds / 86400;
+  int hours = (uptimeSeconds % 86400) / 3600;
+  int minutes = (uptimeSeconds % 3600) / 60;
+  
+  if (days > 0) {
+    sprintf(tmp, "Uptime: %dd %dh %dm", days, hours, minutes);
+  } else if (hours > 0) {
+    sprintf(tmp, "Uptime: %dh %dm", hours, minutes);
+  } else {
+    sprintf(tmp, "Uptime: %dm", minutes);
+  }
+  display.drawTextCentered(display.width() / 2, y, tmp);
+  
     } else if (_page == HomePage::RECENT) {
       the_mesh.getRecentlyHeard(recent, UI_RECENT_LIST_SIZE);
       display.setColor(DisplayDriver::GREEN);
