@@ -63,7 +63,6 @@ public:
   }
 
   int render(DisplayDriver& display) override {
-    // meshcore logo
     display.setColor(DisplayDriver::BLUE);
     display.setTextSize(2);  // Увеличенный шрифт
     display.drawTextCentered(display.width()/2, 1, "SecurB");
@@ -230,15 +229,14 @@ public:
 
 if (_page == HomePage::FIRST) {
   display.setTextSize(1);
-  int y = 16;
+  int y = 16; //Отступ от верхней строки
   
   // 1. Сообщения
   display.setColor(DisplayDriver::GREEN);
   sprintf(tmp, "Messages: %d", _task->getMsgCount());
   display.drawTextCentered(display.width() / 2, y, tmp);
-  y += 12;
-  
-  // 2. WiFi или BLE (все GREEN)
+  y += 12;  
+  // 2. WiFi или BLE
   display.setColor(DisplayDriver::GREEN);
   #ifdef WIFI_SSID
     if (WiFi.status() == WL_CONNECTED) {
@@ -253,15 +251,13 @@ if (_page == HomePage::FIRST) {
     sprintf(tmp, "BLE PIN: %d", blePin > 0 ? blePin : 0);
   #endif
   display.drawTextCentered(display.width() / 2, y, tmp);
-  y += 12;
-  
+  y += 12;  
   // 3. RF
   display.setColor(DisplayDriver::GREEN);
   sprintf(tmp, "RF: %06.3fMHz SF%d", _node_prefs->freq, _node_prefs->sf);
   display.drawTextCentered(display.width() / 2, y, tmp);
-  y += 12;
-  
-  // 4. Uptime (тоже GREEN)
+  y += 12;  
+  // 4. Uptime 
   display.setColor(DisplayDriver::GREEN);
   unsigned long uptimeSeconds = millis() / 1000;
   int days = uptimeSeconds / 86400;
@@ -519,7 +515,7 @@ class MsgPreviewScreen : public UIScreen {
     char msg[78];
 #endif
   };
-  #define MAX_UNREAD_MSGS   32
+  #define MAX_UNREAD_MSGS   20
   int num_unread;
   int head = MAX_UNREAD_MSGS - 1; // index of latest unread message
   MsgEntry unread[MAX_UNREAD_MSGS];
